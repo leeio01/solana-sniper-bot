@@ -1,0 +1,33 @@
+[programs]
+raydium_amm_v4 = ""
+raydium_clmm   = ""
+pump_fun       = ""
+
+[filters]
+min_liquidity_sol = 0.1
+deny_freeze_authority = true
+deny_mint_authority   = true
+deny_transfer_tax     = true
+
+[trading]
+base_buy_sol = 0.02
+slippage_bps = 500
+take_profit_pct = 0.30
+stop_loss_pct  = 0.15
+max_position_seconds = 900
+
+[priority]
+compute_unit_limit = 1000000
+microlamports_per_cu = 5000
+
+[package]
+name = "solana-sniper-bot"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+solana-client = "3.0.0"
+solana-sdk = "3.0.0"
+futures-util = "0.3"
+
