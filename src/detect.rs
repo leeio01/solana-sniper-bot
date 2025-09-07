@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use solana_client::rpc_response::RpcTransactionLogs;
+use solana_client::rpc_response::RpcLogsResponse;
 use solana_sdk::pubkey::Pubkey;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

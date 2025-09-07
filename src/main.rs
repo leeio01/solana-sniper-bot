@@ -5,21 +5,24 @@ mod trade;
 
 use detect::Detector;
 use solana_client::nonblocking::pubsub_client::PubsubClient;
-use solana_client::rpc_config::{RpcTransactionLogsConfig, RpcTransactionLogsFilter};
-use solana_sdk::signature::read_keypair_file;
+use solana_client::rpc_config::RpcTransactionLogsConfig;
+use solana_client::rpc_response::RpcLogsResponse; // FIX: RpcTransactionLogs → RpcLogsResponse
+use solana_client::nonblocking::rpc_client::RpcClient;
+use solana_sdk::signature::{read_keypair_file, Signer}; // FIX: add Signer trait for pubkey()
 use solana_sdk::hash::Hash;
 use trade::{Priority, build_buy_ixs, fast_send};
 use futures_util::StreamExt;
 use std::sync::{Arc, RwLock};
 use tokio;
+use anyhow::Result;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     let ws_url = "wss://api.testnet.solana.com";
     let rpc_url = "https://api.testnet.solana.com";
 
-    // Create RPC client
-    let rpc = solana_client::nonblocking::rpc_client::RpcClient::new(rpc_url.to_string());
+    // Create RPC client wrapped in Arc
+    let rpc = Arc::new(RpcClient::new(rpc_url.to_string()));
 
     // Load wallet keypair
     let keypath = std::env::var("WALLET_KEYPATH")?;
@@ -36,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Spawn task to refresh blockhash every 3 seconds
     {
-        let rpc_bh = rpc.clone();
+        let rpc_bh = Arc::clone(&rpc); // FIX: use Arc::clone
         let bhash2 = bhash.clone();
         tokio::spawn(async move {
             loop {
@@ -64,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
     let config = RpcTransactionLogsConfig { commitment: None };
 
     let (mut logs_stream, _unsubscribe) = client
-        .logs_subscribe(RpcTransactionLogsFilter::All, config)
+        .logs_subscribe(solana_client::rpc_config::RpcTransactionLogsFilter::All, config)
         .await
         .expect("Failed to subscribe to logs");
 
@@ -73,7 +76,7 @@ async fn main() -> anyhow::Result<()> {
     // Process transaction logs
     while let Some(msg) = logs_stream.next().await {
         if let Ok(notif) = msg {
-            if let Some(evt) = detector.process(&notif.value) {
+            if let Some(evt) = detector.process(&notif.value) { // notif.value is RpcLogsResponse
                 println!(
                     "[DETECT] {:?} at slot {} sig={}",
                     evt.kind, evt.detected_at_slot, evt.signature
