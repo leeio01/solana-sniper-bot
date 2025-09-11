@@ -3,13 +3,17 @@ use solana_client::rpc_response::RpcLogsResponse;
 use solana_sdk::pubkey::Pubkey;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum LaunchKind { RaydiumAMM, RaydiumCLMM, PumpFun }
+pub enum LaunchKind {
+    RaydiumAMM,
+    RaydiumCLMM,
+    PumpFun,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LaunchEvent {
     pub kind: LaunchKind,
     pub signature: String,
-    pub token_mint: Pubkey,
+    pub token_mint: Option<Pubkey>,
     pub base_is_sol: bool,
     pub detected_at_slot: u64,
 }
@@ -29,27 +33,47 @@ impl Detector {
         }
     }
 
-    pub fn process(&self, logs: &RpcTransactionLogs) -> Option<LaunchEvent> {
+    /// Process RpcLogsResponse + slot into a LaunchEvent
+    pub fn process(&self, logs: &RpcLogsResponse, slot: u64) -> Option<LaunchEvent> {
         let sig = logs.signature.clone();
-        let slot = logs.context.slot;
-        let mentions = &logs.value;
-        let text = mentions.logs.join("\n");
+        let text = logs.logs.join("\n").to_lowercase();
 
-        // Very simple heuristics — you’ll tighten these with real patterns.
         if let Some(pid) = &self.raydium_amm {
-            if mentions.mentions.iter().any(|m| m == &pid.to_string()) && text.to_lowercase().contains("initialize") {
-                // TODO: parse token mint from accounts or log text
-                // Placeholder: we can’t extract without decoding inner instructions here.
-                return None;
+            if text.contains("initialize") {
+                return Some(LaunchEvent {
+                    kind: LaunchKind::RaydiumAMM,
+                    signature: sig,
+                    token_mint: None,
+                    base_is_sol: true,
+                    detected_at_slot: slot,
+                });
+            }
+        }
+
+        if let Some(pid) = &self.raydium_clmm {
+            if text.contains("initialize") {
+                return Some(LaunchEvent {
+                    kind: LaunchKind::RaydiumCLMM,
+                    signature: sig,
+                    token_mint: None,
+                    base_is_sol: true,
+                    detected_at_slot: slot,
+                });
             }
         }
 
         if let Some(pid) = &self.pump_fun {
-            if mentions.mentions.iter().any(|m| m == &pid.to_string()) && text.to_lowercase().contains("initialize") {
-                // TODO: extract mint
-                return None;
+            if text.contains("initialize") {
+                return Some(LaunchEvent {
+                    kind: LaunchKind::PumpFun,
+                    signature: sig,
+                    token_mint: None,
+                    base_is_sol: true,
+                    detected_at_slot: slot,
+                });
             }
         }
+
         None
     }
 }

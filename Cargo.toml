@@ -24,3 +24,4 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 chrono = { version = "0.4", features = ["clock"] }
 rand = "0.8"
 futures-util = "0.3.31"
+shellexpand = "3.1.1"

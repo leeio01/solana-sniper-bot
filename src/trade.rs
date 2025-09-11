@@ -10,7 +10,6 @@ use solana_sdk::{
     hash::Hash,
     pubkey::Pubkey,
 };
-use std::time::Duration;
 
 pub struct Priority {
     pub compute_unit_limit: u32,
